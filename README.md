@@ -16,3 +16,4 @@ Happy coding!
 3. Add your Verilog files to the `src` folder.
 4. Edit [test/Makefile](test/Makefile) and modify `PROJECT_SOURCES` to point to your Verilog files.
 5. Edit [test/tb.v](test/tb.v) and replace `tt_um_example` with your module name.
+# UWASIC-Onboarding-BV
