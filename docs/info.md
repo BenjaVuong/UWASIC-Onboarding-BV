@@ -9,12 +9,13 @@ You can also include images in this folder and reference them in the markdown. E
 
 ## How it works
 
-Explain how your project works
+This is a SPI peripheral that takes in a 16 bit data packages to manage 16 pwm outputs.
 
 ## How to test
 
-Explain how to use your project
+Using cocotb, still figuring this out haha
 
 ## External hardware
 
-List external hardware used in your project (e.g. PMOD, LED display, etc), if any
+- Something that talks in SPI
+- ye
