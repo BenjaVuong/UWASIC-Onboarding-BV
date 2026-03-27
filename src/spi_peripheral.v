@@ -22,10 +22,6 @@ module spi_peripheral (
   localparam max_address = 7'h4;
 
   // Signal Sync ----------------------------------------
-  wire SCLK_raw = ui_in[0];
-  wire COPI_raw = ui_in[1];
-  wire nCS_raw = ui_in[2];
-
   reg SCLK_mid_sync,  SCLK_sync,  SCLK_sync_prev;
   reg COPI_mid_sync,  COPI_sync,  COPI_sync_prev;
   reg nCS_mid_sync,   nCS_sync,   nCS_sync_prev;
@@ -74,13 +70,13 @@ module spi_peripheral (
 
     end else begin
     // Signal Sync -----------------------------------
-      SCLK_mid_sync   <= SCLK_raw;
+      SCLK_mid_sync   <= SCLK;
       SCLK_sync       <= SCLK_mid_sync;
       SCLK_sync_prev  <= SCLK_sync;
-      COPI_mid_sync   <= COPI_raw;
+      COPI_mid_sync   <= COPI;
       COPI_sync       <= COPI_mid_sync;
       COPI_sync_prev  <= COPI_sync;
-      nCS_mid_sync    <= nCS_raw;
+      nCS_mid_sync    <= nCS;
       nCS_sync        <= nCS_mid_sync;
       nCS_sync_prev   <= nCS_sync;
 
@@ -93,7 +89,7 @@ module spi_peripheral (
         transaction_complete <= 1'b1;
       end 
       // If nCS still low, shift in data on SCLK rising 
-      if (!nCS_sync & SCLK_rise == 1'b0) begin
+      if (!nCS_sync & SCLK_rise) begin
         bit_count <= bit_count + 1'b1;
         shift_reg[15:0] <= {shift_reg[14:0], COPI_sync};
       end
