@@ -96,7 +96,7 @@ module spi_peripheral (
       // If nCS rises, end data transfer
       if (nCS_rise) begin 
         transaction_ready <= 1'b1;
-        transaction_complete <= 1'b0;
+        transaction_complete <= (bit_count == 5'd16);
       end
 
     // Putting data into registers -------------------
