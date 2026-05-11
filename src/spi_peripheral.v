@@ -102,7 +102,7 @@ module spi_peripheral (
     // Putting data into registers -------------------
       if (spi_valid) begin
         case(shift_reg[14:8])
-          7'h0:
+        7'h0:
           en_reg_out_7_0[7:0]   <= shift_reg[7:0];
         7'h1:
           en_reg_out_15_8[7:0]  <= shift_reg[7:0];

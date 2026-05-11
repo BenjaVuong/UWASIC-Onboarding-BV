@@ -3,10 +3,12 @@
 
 import cocotb
 from cocotb.clock import Clock
-from cocotb.triggers import RisingEdge
-from cocotb.triggers import ClockCycles
+from cocotb.triggers import RisingEdge, FallingEdge
+from cocotb.triggers import ClockCycles, with_timeout
 from cocotb.types import Logic
 from cocotb.types import LogicArray
+from cocotb.utils import get_sim_time
+from cocotb.result import SimTimeoutError
 
 async def await_half_sclk(dut):
     """Wait for the SCLK signal to go high or low."""
@@ -21,6 +23,52 @@ async def await_half_sclk(dut):
 def ui_in_logicarray(ncs, bit, sclk):
     """Setup the ui_in value as a LogicArray."""
     return LogicArray(f"00000{ncs}{bit}{sclk}")
+
+async def wait_rising_on_clk(sig, clk, timeout_ms=5):
+    """
+    Wait for a signal to rise.
+
+    Params:
+    - sig: the signal to be monitored
+    - clk: module clock
+    - timeout_ms: the time to wait until monitoring stopped
+    """
+    max_cycles = int(timeout_ms*10000)
+    prev_val = sig.value
+
+    for i in range(max_cycles):
+        await RisingEdge(clk)
+        current_val = sig.value
+
+        if prev_val == 0 and current_val == 1:
+            return True
+
+        prev_val = current_val
+
+    return False
+
+async def wait_falling_on_clk(sig, clk, timeout_ms=5):
+    """
+    Wait for a signal to rise.
+
+    Params:
+    - sig: the signal to be monitored
+    - clk: module clock
+    - timeout_ms: the time to wait until monitoring stopped
+    """
+    max_cycles = int(timeout_ms*10000)
+    prev_val = sig.value
+
+    for i in range(max_cycles):
+        await FallingEdge(clk)
+        current_val = sig.value
+
+        if prev_val == 0 and current_val == 1:
+            return True
+
+        prev_val = current_val
+
+    return False
 
 async def send_spi_transaction(dut, r_w, address, data):
     """
@@ -149,13 +197,82 @@ async def test_spi(dut):
 
     dut._log.info("SPI test completed successfully")
 
+
+
 @cocotb.test()
 async def test_pwm_freq(dut):
     # Write your test here
+
+    # 10 MHz clock
+    clock = Clock(dut.clk, 100, units="ns")
+    cocotb.start_soon(clock.start())
+
+    # Reset module
+    dut._log.info("Testing Reset")
+    dut.ena.value = 1
+    ncs = 1
+    bit = 0
+    sclk = 0
+    dut.ui_in.value = ui_in_logicarray(ncs, bit, sclk)
+    dut.rst_n.value = 0
+    await ClockCycles(dut.clk, 5)
+    dut.rst_n.value = 1
+    await ClockCycles(dut.clk, 5)
+
+    # Set the PWM cycle to 50%, enable outputs to PWM mode
+    ui_in_val = await send_spi_transaction(dut, 1, 0x04, 127)
+    #   Enable output & pwm mode
+    ui_in_val = await send_spi_transaction(dut, 1, 0x00, 0xff)
+    ui_in_val = await send_spi_transaction(dut, 1, 0x01, 0xff)
+    ui_in_val = await send_spi_transaction(dut, 1, 0x02, 0xff)
+    ui_in_val = await send_spi_transaction(dut, 1, 0x03, 0xff)
+    
+
+    await with_timeout(wait_rising_on_clk(dut.uo_out[0], dut.clk), 2, "ms")
+    t1 = get_sim_time(units="ns")
+    await with_timeout(wait_rising_on_clk(dut.uo_out[0], dut.clk), 2, "ms")
+    t2 = get_sim_time(units="ns")
+
+    pwm_period = (t2-t1)/1e9 #convert ns to seconds
+    pwm_freq = 1/pwm_period
+
+    assert 2970 < pwm_freq < 3030, f"PWM Freq supposed to be between 2970 and 3030, got {pwm_freq}"
+
     dut._log.info("PWM Frequency test completed successfully")
 
 
 @cocotb.test()
 async def test_pwm_duty(dut):
     # Write your test here
+
+    dut._log.info("PWM Test 0% Duty Cycle")
+    #   Enable output & pwm mode
+    ui_in_val = await send_spi_transaction(dut, 1, 0x00, 0xff)
+    ui_in_val = await send_spi_transaction(dut, 1, 0x01, 0xff)
+    ui_in_val = await send_spi_transaction(dut, 1, 0x02, 0xff)
+    ui_in_val = await send_spi_transaction(dut, 1, 0x03, 0xff)
+    
+    # Set the PWM cycle to 0%
+    ui_in_val = await send_spi_transaction(dut, 1, 0x04, 0x00)
+    # Make sure the signal doesn't turn on.
+    assert wait_rising_on_clk(dut.uo_out[0], dut.clk) == False, f"PWM signal rise detected, expected to stay off."
+
+    # Set PWM cycle 50%
+    ui_in_val = await send_spi_transaction(dut, 1, 0x04, 127)
+    wait_rising_on_clk(dut.uo_out[0], dut.clk)
+    t1_rise = get_sim_time(units="ns")
+    wait_falling_on_clk(dut.uo_out[0], dut.clk)
+    t1_fall = get_sim_time(units="ns")
+
+    pwm_period = (t1_fall - t1_rise)/1e9
+    pwm_freq = 1/pwm_period
+
+    assert 1470 < pwm_freq < 1530, f"PWM Freq supposed to be between 1470 and 1530, got {pwm_freq}"
+
+
+    # Set PWM cycle 100%
+    ui_in_val = await send_spi_transaction(dut, 1, 0x04, 0xff)
+    assert wait_falling_on_clk(dut.uo_out[0], dut.clk) == False, f"PWM signal fall detected, expected to stay on."
+
+
     dut._log.info("PWM Duty Cycle test completed successfully")
