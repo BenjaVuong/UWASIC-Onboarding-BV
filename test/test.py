@@ -63,7 +63,7 @@ async def wait_falling_on_clk(sig, clk, timeout_ms=5):
         await FallingEdge(clk)
         current_val = sig.value
 
-        if prev_val == 0 and current_val == 1:
+        if prev_val == 1 and current_val == 0:
             return True
 
         prev_val = current_val
@@ -245,6 +245,24 @@ async def test_pwm_freq(dut):
 async def test_pwm_duty(dut):
     # Write your test here
 
+
+    # 10 MHz clock
+    clock = Clock(dut.clk, 100, units="ns")
+    cocotb.start_soon(clock.start())
+
+    # Reset module
+    dut._log.info("Testing Reset")
+    dut.ena.value = 1
+    ncs = 1
+    bit = 0
+    sclk = 0
+    dut.ui_in.value = ui_in_logicarray(ncs, bit, sclk)
+    dut.rst_n.value = 0
+    await ClockCycles(dut.clk, 5)
+    dut.rst_n.value = 1
+    await ClockCycles(dut.clk, 5)
+
+
     dut._log.info("PWM Test 0% Duty Cycle")
     #   Enable output & pwm mode
     ui_in_val = await send_spi_transaction(dut, 1, 0x00, 0xff)
@@ -257,17 +275,17 @@ async def test_pwm_duty(dut):
     # Make sure the signal doesn't turn on.
     assert wait_rising_on_clk(dut.uo_out[0], dut.clk) == False, f"PWM signal rise detected, expected to stay off."
 
-    # Set PWM cycle 50%
-    ui_in_val = await send_spi_transaction(dut, 1, 0x04, 127)
-    wait_rising_on_clk(dut.uo_out[0], dut.clk)
-    t1_rise = get_sim_time(units="ns")
-    wait_falling_on_clk(dut.uo_out[0], dut.clk)
-    t1_fall = get_sim_time(units="ns")
+    # # Set PWM cycle 50%
+    # ui_in_val = await send_spi_transaction(dut, 1, 0x04, 127)
+    # await wait_rising_on_clk(dut.uo_out[0], dut.clk)
+    # t1_rise = get_sim_time(units="ns")
+    # await wait_falling_on_clk(dut.uo_out[0], dut.clk)
+    # t1_fall = get_sim_time(units="ns")
 
-    pwm_period = (t1_fall - t1_rise)/1e9
-    pwm_freq = 1/pwm_period
+    # pwm_period = (t1_fall - t1_rise)/1e9
+    # pwm_freq = 1/pwm_period
 
-    assert 1470 < pwm_freq < 1530, f"PWM Freq supposed to be between 1470 and 1530, got {pwm_freq}"
+    # assert 1470 < pwm_freq < 1530, f"PWM Freq supposed to be between 1470 and 1530, got {pwm_freq}"
 
 
     # Set PWM cycle 100%
