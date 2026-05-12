@@ -273,24 +273,27 @@ async def test_pwm_duty(dut):
     # Set the PWM cycle to 0%
     ui_in_val = await send_spi_transaction(dut, 1, 0x04, 0x00)
     # Make sure the signal doesn't turn on.
-    assert wait_rising_on_clk(dut.uo_out[0], dut.clk) == False, f"PWM signal rise detected, expected to stay off."
+    assert await wait_rising_on_clk(dut.uo_out[0], dut.clk) == False, f"PWM signal rise detected, expected to stay off."
 
-    # # Set PWM cycle 50%
-    # ui_in_val = await send_spi_transaction(dut, 1, 0x04, 127)
-    # await wait_rising_on_clk(dut.uo_out[0], dut.clk)
-    # t1_rise = get_sim_time(units="ns")
-    # await wait_falling_on_clk(dut.uo_out[0], dut.clk)
-    # t1_fall = get_sim_time(units="ns")
+    # Set PWM cycle 50%
+    ui_in_val = await send_spi_transaction(dut, 1, 0x04, 127)
+    await wait_rising_on_clk(dut.uo_out[0], dut.clk)
+    t1_rise = get_sim_time(units="ns")
+    await wait_falling_on_clk(dut.uo_out[0], dut.clk)
+    t1_fall = get_sim_time(units="ns")
+    await wait_rising_on_clk(dut.uo_out[0], dut.clk)
+    t2_rise = get_sim_time(units="ns")
 
-    # pwm_period = (t1_fall - t1_rise)/1e9
-    # pwm_freq = 1/pwm_period
+    pwm_high_period = t2_rise - t1_rise
+    pwm_full_period = (t1_fall - t1_rise)
+    duty_cycle = pwm_high_period/pwm_full_period
 
-    # assert 1470 < pwm_freq < 1530, f"PWM Freq supposed to be between 1470 and 1530, got {pwm_freq}"
+    assert 0.48 < duty_cycle < 0.52, f"Duty cycle supposed to be between 48% and 52%, got {duty_cycle}"
 
 
     # Set PWM cycle 100%
     ui_in_val = await send_spi_transaction(dut, 1, 0x04, 0xff)
-    assert wait_falling_on_clk(dut.uo_out[0], dut.clk) == False, f"PWM signal fall detected, expected to stay on."
+    assert await wait_falling_on_clk(dut.uo_out[0], dut.clk) == False, f"PWM signal fall detected, expected to stay on."
 
 
     dut._log.info("PWM Duty Cycle test completed successfully")
