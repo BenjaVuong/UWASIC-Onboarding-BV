@@ -219,13 +219,14 @@ async def test_pwm_freq(dut):
     dut.rst_n.value = 1
     await ClockCycles(dut.clk, 5)
 
-    # Set the PWM cycle to 50%, enable outputs to PWM mode
-    ui_in_val = await send_spi_transaction(dut, 1, 0x04, 127)
+    
     #   Enable output & pwm mode
     ui_in_val = await send_spi_transaction(dut, 1, 0x00, 0xff)
     ui_in_val = await send_spi_transaction(dut, 1, 0x01, 0xff)
     ui_in_val = await send_spi_transaction(dut, 1, 0x02, 0xff)
     ui_in_val = await send_spi_transaction(dut, 1, 0x03, 0xff)
+    #   Set the PWM cycle to 50%, enable outputs to PWM mode
+    ui_in_val = await send_spi_transaction(dut, 1, 0x04, 127)
     
 
     await with_timeout(wait_rising_on_clk(dut.uo_out[0], dut.clk), 2, "ms")
@@ -284,8 +285,8 @@ async def test_pwm_duty(dut):
     await wait_rising_on_clk(dut.uo_out[0], dut.clk)
     t2_rise = get_sim_time(units="ns")
 
-    pwm_high_period = t2_rise - t1_rise
-    pwm_full_period = (t1_fall - t1_rise)
+    pwm_full_period = t2_rise - t1_rise
+    pwm_high_period = (t1_fall - t1_rise)
     duty_cycle = pwm_high_period/pwm_full_period
 
     assert 0.48 < duty_cycle < 0.52, f"Duty cycle supposed to be between 48% and 52%, got {duty_cycle}"
