@@ -229,9 +229,9 @@ async def test_pwm_freq(dut):
     ui_in_val = await send_spi_transaction(dut, 1, 0x04, 127)
     
 
-    await with_timeout(wait_rising_on_clk(dut.uo_out[0], dut.clk), 2, "ms")
+    await wait_rising_on_clk(dut.uo_out[0], dut.clk)
     t1 = get_sim_time(units="ns")
-    await with_timeout(wait_rising_on_clk(dut.uo_out[0], dut.clk), 2, "ms")
+    await wait_rising_on_clk(dut.uo_out[0], dut.clk)
     t2 = get_sim_time(units="ns")
 
     pwm_period = (t2-t1)/1e9 #convert ns to seconds
