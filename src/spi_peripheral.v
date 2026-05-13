@@ -23,7 +23,7 @@ module spi_peripheral (
 
   // Signal Sync ----------------------------------------
   reg SCLK_mid_sync,  SCLK_sync,  SCLK_sync_prev;
-  reg COPI_mid_sync,  COPI_sync,  COPI_sync_prev;
+  reg COPI_mid_sync,  COPI_sync;
   reg nCS_mid_sync,   nCS_sync,   nCS_sync_prev;
 
   wire SCLK_rise = !SCLK_sync_prev & SCLK_sync;
@@ -52,7 +52,6 @@ module spi_peripheral (
       SCLK_sync_prev  <= 1'b0;
       COPI_mid_sync   <= 1'b0;
       COPI_sync       <= 1'b0;
-      COPI_sync_prev  <= 1'b0;
       nCS_mid_sync   <= 1'b0;
       nCS_sync       <= 1'b0;
       nCS_sync_prev  <= 1'b0;
@@ -60,7 +59,7 @@ module spi_peripheral (
       shift_reg <= 16'h0000;
       bit_count <= 5'b00000;
       transaction_ready <= 1'b0;
-      transaction_complete <= 1'b1;
+      transaction_complete <= 1'b0;
 
       en_reg_out_7_0[7:0]   <= 8'h0;
       en_reg_out_15_8[7:0]  <= 8'h0;
@@ -75,7 +74,6 @@ module spi_peripheral (
       SCLK_sync_prev  <= SCLK_sync;
       COPI_mid_sync   <= COPI;
       COPI_sync       <= COPI_mid_sync;
-      COPI_sync_prev  <= COPI_sync;
       nCS_mid_sync    <= nCS;
       nCS_sync        <= nCS_mid_sync;
       nCS_sync_prev   <= nCS_sync;
@@ -86,7 +84,7 @@ module spi_peripheral (
         shift_reg <= 16'h0;
         bit_count <= 5'b00000;
         transaction_ready <= 1'b0;
-        transaction_complete <= 1'b1;
+        transaction_complete <= 1'b0;
       end 
       // If nCS still low, shift in data on SCLK rising 
       if (!nCS_sync & SCLK_rise) begin
