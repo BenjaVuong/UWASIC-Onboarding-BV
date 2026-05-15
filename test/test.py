@@ -70,6 +70,40 @@ async def wait_falling_on_clk(sig, clk, timeout_ms=5):
 
     return False
 
+async def wait_high(sig, timeout_ms=5):
+    """
+    Wait for a signal to go high.
+
+    Params:
+    - sig: the signal to be monitored
+    - clk: module clock
+    - timeout_ms: the time to wait until monitoring stopped
+    """
+    max_cycles = int(timeout_ms*10000)
+
+    for i in range(max_cycles):
+        if(sig.value == 1):
+            return True
+        
+    return False
+
+async def wait_low(sig, timeout_ms=5):
+    """
+    Wait for a signal to go low.
+
+    Params:
+    - sig: the signal to be monitored
+    - clk: module clock
+    - timeout_ms: the time to wait until monitoring stopped
+    """
+    max_cycles = int(timeout_ms*10000)
+
+    for i in range(max_cycles):
+        if(sig.value == 0):
+            return True
+        
+    return False
+
 async def send_spi_transaction(dut, r_w, address, data):
     """
     Send an SPI transaction with format:
@@ -296,5 +330,63 @@ async def test_pwm_duty(dut):
     ui_in_val = await send_spi_transaction(dut, 1, 0x04, 0xff)
     assert await wait_falling_on_clk(dut.uo_out[0], dut.clk) == False, f"PWM signal fall detected, expected to stay on."
 
+    
+    # PWM Sweep test
+    for i in range (256):
+
+        # Set PWM cycle to i
+        ui_in_val = await send_spi_transaction(dut, 1, 0x04, i)
+
+        if (i == 255):
+            assert await wait_falling_on_clk(dut.uo_out[0], dut.clk) == False, f"PWM signal fall detected, expected to stay on."
+        else: 
+            await wait_rising_on_clk(dut.uo_out[0], dut.clk)
+            t1_rise = get_sim_time(units="ns")
+            await wait_falling_on_clk(dut.uo_out[0], dut.clk)
+            t1_fall = get_sim_time(units="ns")
+            await wait_rising_on_clk(dut.uo_out[0], dut.clk)
+            t2_rise = get_sim_time(units="ns")
+
+            ith_full_period = t2_rise - t1_rise
+            ith_high_period = t1_fall - t1_rise
+            ith_duty_cycle = ith_high_period/ith_full_period
+            assert ((i/255) - 0.01) < ith_duty_cycle < ((i/255) + 0.01)
+
+
+    # Output Enable + PWM Enable Reg Verification
+    
+    #   Set PWM cycle 50%
+    ui_in_val = await send_spi_transaction(dut, 1, 0x04, 127)
+
+    #   Test with output enable off
+    ui_in_val = await send_spi_transaction(dut, 1, 0x00, 0)
+    ui_in_val = await send_spi_transaction(dut, 1, 0x01, 0)
+    ui_in_val = await send_spi_transaction(dut, 1, 0x02, 0xff)
+    ui_in_val = await send_spi_transaction(dut, 1, 0x03, 0xff)
+    assert await wait_high(dut.uo_out[0]) == False, f"Signal on even when enable is on"
+
+    #   Enable output, PWM mode off.
+    ui_in_val = await send_spi_transaction(dut, 1, 0x02, 0x00)
+    ui_in_val = await send_spi_transaction(dut, 1, 0x03, 0x00)
+    assert await wait_low(dut.uo_out[0]) == False, f"Signal is off, expected high"
+
+    #   Enable output, PWM mode on.
+    ui_in_val = await send_spi_transaction(dut, 1, 0x02, 0xff)
+    ui_in_val = await send_spi_transaction(dut, 1, 0x03, 0xff)
+    await wait_rising_on_clk(dut.uo_out[0], dut.clk)
+    t1_rise = get_sim_time(units="ns")
+    await wait_falling_on_clk(dut.uo_out[0], dut.clk)
+    t1_fall = get_sim_time(units="ns")
+    await wait_rising_on_clk(dut.uo_out[0], dut.clk)
+    t2_rise = get_sim_time(units="ns")
+
+    pwm_full_period = t2_rise - t1_rise
+    pwm_high_period = (t1_fall - t1_rise)
+    duty_cycle = pwm_high_period/pwm_full_period
+
+    assert 0.48 < duty_cycle < 0.52, f"Duty cycle supposed to be between 48% and 52%, got {duty_cycle}"
+    
+
+    
 
     dut._log.info("PWM Duty Cycle test completed successfully")
