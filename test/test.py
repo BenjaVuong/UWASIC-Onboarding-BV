@@ -311,6 +311,7 @@ async def test_pwm_duty(dut):
     assert await wait_rising_on_clk(dut.uo_out[0], dut.clk) == False, f"PWM signal rise detected, expected to stay off."
 
     # Set PWM cycle 50%
+    dut._log.info("PWM Test 50% Duty Cycle")
     ui_in_val = await send_spi_transaction(dut, 1, 0x04, 127)
     await wait_rising_on_clk(dut.uo_out[0], dut.clk)
     t1_rise = get_sim_time(units="ns")
@@ -332,11 +333,13 @@ async def test_pwm_duty(dut):
 
     
     # PWM Sweep test
+    dut._log.info("PWM Sweep Test")
     for i in range (256):
 
         # Set PWM cycle to i
         ui_in_val = await send_spi_transaction(dut, 1, 0x04, i)
 
+        dut._log.info(f"PWM Sweep: {i}/255")
         if (i == 255):
             assert await wait_falling_on_clk(dut.uo_out[0], dut.clk) == False, f"PWM signal fall detected, expected to stay on."
         else: 
@@ -354,7 +357,7 @@ async def test_pwm_duty(dut):
 
 
     # Output Enable + PWM Enable Reg Verification
-    
+
     #   Set PWM cycle 50%
     ui_in_val = await send_spi_transaction(dut, 1, 0x04, 127)
 
