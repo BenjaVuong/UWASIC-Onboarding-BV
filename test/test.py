@@ -373,6 +373,8 @@ async def test_pwm_duty(dut):
     assert await wait_high(dut.uo_out[0], dut.clk) == False, f"Signal on even when enable is on"
 
     #   Enable output, PWM mode off.
+    ui_in_val = await send_spi_transaction(dut, 1, 0x00, 0xff)
+    ui_in_val = await send_spi_transaction(dut, 1, 0x01, 0xff)
     ui_in_val = await send_spi_transaction(dut, 1, 0x02, 0x00)
     ui_in_val = await send_spi_transaction(dut, 1, 0x03, 0x00)
     assert await wait_low(dut.uo_out[0], dut.clk) == False, f"Signal is off, expected high"
