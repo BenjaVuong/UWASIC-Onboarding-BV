@@ -70,7 +70,7 @@ async def wait_falling_on_clk(sig, clk, timeout_ms=5):
 
     return False
 
-async def wait_high(sig, timeout_ms=5):
+async def wait_high(sig, clk, timeout_ms=5):
     """
     Wait for a signal to go high.
 
@@ -82,12 +82,13 @@ async def wait_high(sig, timeout_ms=5):
     max_cycles = int(timeout_ms*10000)
 
     for i in range(max_cycles):
+        await FallingEdge(clk)
         if(sig.value == 1):
             return True
         
     return False
 
-async def wait_low(sig, timeout_ms=5):
+async def wait_low(sig, clk, timeout_ms=5):
     """
     Wait for a signal to go low.
 
@@ -99,6 +100,7 @@ async def wait_low(sig, timeout_ms=5):
     max_cycles = int(timeout_ms*10000)
 
     for i in range(max_cycles):
+        await FallingEdge(clk)
         if(sig.value == 0):
             return True
         
@@ -368,12 +370,12 @@ async def test_pwm_duty(dut):
     ui_in_val = await send_spi_transaction(dut, 1, 0x01, 0)
     ui_in_val = await send_spi_transaction(dut, 1, 0x02, 0xff)
     ui_in_val = await send_spi_transaction(dut, 1, 0x03, 0xff)
-    assert await wait_high(dut.uo_out[0]) == False, f"Signal on even when enable is on"
+    assert await wait_high(dut.uo_out[0], dut.clk) == False, f"Signal on even when enable is on"
 
     #   Enable output, PWM mode off.
     ui_in_val = await send_spi_transaction(dut, 1, 0x02, 0x00)
     ui_in_val = await send_spi_transaction(dut, 1, 0x03, 0x00)
-    assert await wait_low(dut.uo_out[0]) == False, f"Signal is off, expected high"
+    assert await wait_low(dut.uo_out[0], dut.clk) == False, f"Signal is off, expected high"
 
     #   Enable output, PWM mode on.
     ui_in_val = await send_spi_transaction(dut, 1, 0x02, 0xff)
